@@ -1,16 +1,13 @@
-import { useState } from 'react'
-import { Habit } from '@/store/habits'
+import { HabitCardProps } from '@/types'
 import { Minus, Plus, GripVertical } from 'lucide-react'
 
-interface HabitCardProps {
-  habit: Habit
-  onIncrement: () => void
-  onDecrement: () => void
-  isDragging?: boolean
-  dragHandleProps?: any
-}
-
-export function HabitCard({ habit, onIncrement, onDecrement, isDragging, dragHandleProps }: HabitCardProps) {
+export function HabitCard({ 
+  habit, 
+  onIncrement, 
+  onDecrement, 
+  isDragging, 
+  dragHandleProps 
+}: HabitCardProps) {
   const progress = (habit.count / habit.goal) * 100
 
   return (
