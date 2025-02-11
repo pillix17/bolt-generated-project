@@ -42,7 +42,34 @@ const generateRandomColor = () => {
   return vibrantColors[Math.floor(Math.random() * vibrantColors.length)]
 }
 
-export const useHabitStore = create<HabitStore>(
+// Check if it's a new day and reset habits if needed
+const checkAndResetHabits = (habits: Habit[]) => {
+  const lastResetDate = localStorage.getItem('lastResetDate')
+  const today = new Date().toDateString()
+
+  if (lastResetDate !== today) {
+    // Save yesterday's counts to history before resetting
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+    const updatedHabits = habits.map(habit => ({
+      ...habit,
+      history: [
+        ...habit.history,
+        { date: yesterdayStr, count: habit.count }
+      ],
+      count: 0
+    }))
+
+    localStorage.setItem('lastResetDate', today)
+    return updatedHabits
+  }
+
+  return habits
+}
+
+export const useHabitStore = create<HabitStore>()(
   persist(
     (set, get) => ({
       habits: [],
@@ -63,66 +90,26 @@ export const useHabitStore = create<HabitStore>(
       incrementHabit: (habitId) => set((state) => {
         const updatedHabits = state.habits.map(habit => {
           if (habit.id === habitId) {
-            const newCount = habit.count + 1
-            const today = new Date().toISOString().split('T')[0]
-            
-            const existingHistoryIndex = habit.history.findIndex(h => h.date === today)
-            const updatedHistory = [...habit.history]
-            
-            if (existingHistoryIndex !== -1) {
-              updatedHistory[existingHistoryIndex] = { 
-                date: today, 
-                count: newCount 
-              }
-            } else {
-              updatedHistory.push({ 
-                date: today, 
-                count: newCount 
-              })
-            }
-            
-            return { 
-              ...habit, 
-              count: newCount,
-              history: updatedHistory
+            return {
+              ...habit,
+              count: habit.count + 1
             }
           }
           return habit
         })
-        
         return { habits: updatedHabits }
       }),
       
       decrementHabit: (habitId) => set((state) => {
         const updatedHabits = state.habits.map(habit => {
           if (habit.id === habitId && habit.count > 0) {
-            const newCount = habit.count - 1
-            const today = new Date().toISOString().split('T')[0]
-            
-            const existingHistoryIndex = habit.history.findIndex(h => h.date === today)
-            const updatedHistory = [...habit.history]
-            
-            if (existingHistoryIndex !== -1) {
-              updatedHistory[existingHistoryIndex] = { 
-                date: today, 
-                count: newCount 
-              }
-            } else {
-              updatedHistory.push({ 
-                date: today, 
-                count: newCount 
-              })
-            }
-            
-            return { 
-              ...habit, 
-              count: newCount,
-              history: updatedHistory
+            return {
+              ...habit,
+              count: habit.count - 1
             }
           }
           return habit
         })
-        
         return { habits: updatedHabits }
       }),
       
@@ -150,19 +137,53 @@ export const useHabitStore = create<HabitStore>(
         const result = Array.from(state.habits)
         const [removed] = result.splice(startIndex, 1)
         result.splice(endIndex, 0, removed)
-        return { habits: result }
+        return { 
+          habits: result.map((habit, index) => ({
+            ...habit,
+            order: index
+          }))
+        }
       }),
       
       resetDailyHabits: () => set((state) => ({
-        habits: state.habits.map(habit => ({
-          ...habit,
-          count: 0
-        }))
+        habits: checkAndResetHabits(state.habits)
       }))
     }),
     {
-      name: 'habit-tracker-storage',
-      getStorage: () => localStorage
+      name: 'habits-storage',
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name)
+          if (!str) return null
+          const data = JSON.parse(str)
+          return {
+            ...data,
+            state: {
+              ...data.state,
+              habits: checkAndResetHabits(data.state.habits)
+            }
+          }
+        },
+        setItem: (name, value) => localStorage.setItem(name, JSON.stringify(value)),
+        removeItem: (name) => localStorage.removeItem(name)
+      }
     }
   )
 )
+
+// Initialize daily reset check
+const initializeDailyReset = () => {
+  const now = new Date()
+  const tomorrow = new Date(now)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(0, 0, 0, 0)
+  
+  const timeUntilMidnight = tomorrow.getTime() - now.getTime()
+  
+  setTimeout(() => {
+    useHabitStore.getState().resetDailyHabits()
+    initializeDailyReset() // Set up next day's check
+  }, timeUntilMidnight)
+}
+
+initializeDailyReset()
