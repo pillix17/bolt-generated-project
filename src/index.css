@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f4f4f4;
+  --card-background: #ffffff;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --accent-color: #6a5acd;
+  --gradient-start: #8a2be2;
+  --gradient-end: #4b0082;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+}
+
+.habit-gradient {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+}
+
+.shadow-elegant {
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
